@@ -4,4 +4,8 @@ build:
 
 .PHONY: up
 up:
-	docker-compose up -d
+	docker-compose up
+
+.PHONY: destroy
+destroy:
+	docker-compose down --rmi all -v
