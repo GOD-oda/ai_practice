@@ -6,6 +6,10 @@ build:
 up:
 	docker-compose up
 
+.PHONY: install
+install:
+	docker-compose run --rm app pipenv install --three
+
 .PHONY: destroy
 destroy:
 	docker-compose down --rmi all -v

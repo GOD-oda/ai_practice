@@ -5,3 +5,7 @@ services:
     command: pipenv run app
     volumes:
       - ./:/var/www/html
+      - python-packages:/root/.local/share
+
+volumes:
+  python-packages:
