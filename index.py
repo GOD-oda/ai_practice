@@ -1,161 +1,58 @@
-import warnings
-warnings.simplefilter('ignore')
-
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-import pandas as pd
-from pandas.plotting import scatter_matrix
-import matplotlib
+from collections import Counter
+import scipy.sparse as sparse
+from sklearn.decomposition import LatentDirichletAllocation
+import json
 import numpy as np
-import scipy as sp
-from IPython.display import display
-import mglearn
-from sklearn.neighbors import KNeighborsClassifier
-# jupyter Notebookで必要
-# % matplotlib inline
-import matplotlib.pyplot as plt
-from scipy import sparse
 import sys
-import IPython
-import sklearn
 
+with open('./ml_mysql_nouns.json', 'r') as f:
+    doc_data = json.load(f)
 
-# 1-1
-x = np.array([[1,2,3], [4,5,6]])
-# print("x:\n{}".format(x))
+duplicating_all_vocab = []
+for data in doc_data.values():
+    duplicating_all_vocab += data
 
-# 1-2
-eye = np.eye(4)
-# print("NumPy array:\n{}".format(eye))
+# 重複を弾く
+all_vocab = list(set(duplicating_all_vocab))
 
-# 1-3
-sparse_matrix = sparse.csr_matrix(eye)
-# print("\nSciPy sparse CSR matrix:\n{}".format(sparse_matrix))
+# 元々の単語数は3091
+# print(len(duplicating_all_vocab))
+# 重複を弾くと676
+# print(len(all_vocab))
 
-# 1-4
-data = np.ones(4)
-row_indices = np.arange(4)
-col_indices = np.arange(4)
-eye_coo = sparse.coo_matrix((data, (row_indices, col_indices)))
-# print("COO representation:\n{}".format(eye_coo))
+# trainingデータとtestデータに分けておく
+# 文書のインデックス番号を入れておく
+all_doc_index = doc_data.keys()
+all_doc_index_ar = np.array(list(all_doc_index))
 
-# 1-5
-x = np.linspace(-10, 10, 100)
-y = np.sin(x)
-# plt.plot(x, y, marker="x")
+# trainingデータには全体の100%を入れる(これを0.9にすると、全体の90%という指定ができる)
+train_portion = 1
+train_num = int(len(all_doc_index) * train_portion)
 
-# 1-6
-data = {'Name': ["John", "Anna", "Peter", "Linda"],
-        'Location': ["New York", "Paris", "Berlin", "London"],
-        'Age': [24, 13, 53, 33]
-        }
-data_pandas = pd.DataFrame(data)
-# display(data_pandas)
+# trainingデータのindexと、testデータのインデックス。
+# データが多い場合、shuffleなどを使って、トレーニングデータと、テストデータのインデックスを割り振ると良い
+train_doc_index = all_doc_index_ar[:train_num]
+test_doc_index = all_doc_index_ar[train_num:]
 
-# 1-7
-# display(data_pandas[data_pandas.Age > 30])
+# 取り敢えず、空の疎行列を作り、あとでここにデータを入れていく。
+# (train_doc_indexの長さ) * (all_vocabの長さ) = 8 * 676
+lil_train = sparse.lil_matrix(len(train_doc_index), len(all_vocab), dtype=np.int)
+lil_test = sparse.lil_matrix(len(test_doc_index), len(all_vocab), dtype=np.int)
+# TODO: 出力結果が違うので要確認
+# print(lil_train.shape)
 
-# 1-8
-# print("Python version: {}".format(sys.version))
-# print("pandas version: {}".format(pd.__version__))
-# print("matplotlib version: {}".format(matplotlib.__version__))
-# print("NumPy version: {}".format(np.__version__))
-# print("SciPy version: {}".format(sp.__version__))
-# print("IPython version: {}".format(IPython.__version__))
-# print("scikit-learn version: {}".format(sklearn.__version__))
+# train_total_elements_numは単語が何個あるかをカウントしている
+train_total_elements_num = 0
+all_vocab_arr = np.array(all_vocab)
+for i in range(len(train_doc_index)):
+    doc_index = train_doc_index[i]
 
-# 1-9
-iris_dataset = load_iris()
+    row_data = Counter(doc_data[doc_index])
 
-# 1-10
-# print("Keys of iris_dataset: \n{}".format(iris_dataset.keys()))
+    # row_dataにキーとして入っている文字がwordに入る
+    # for word in row_data.keys():
+    #     word_index = np.where(all_vocab_arr == word)[0][0]
+    #     lil_train[i, word_index] = row_data[word]
+    #     train_total_elements_num += 1
 
-# 1-11
-# print(iris_dataset['DESCR'][:193] + "\n...")
-
-# 1-12
-# print("Target names: {}".format(iris_dataset['target_names']))
-
-# 1-13
-# print("Feature name: \n{}".format(iris_dataset['feature_names']))
-
-# 1-14
-# print("Type of data: {}".format(type(iris_dataset['data'])))
-
-# 1-15
-# print("Shape of data: {}".format(iris_dataset['data'].shape))
-
-# 1-16
-# print("First five columns of data:\n{}".format(iris_dataset['data'][:5]))
-
-# 1-17
-# print("Type of target: {}".format(type(iris_dataset['target'])))
-
-# 1-18
-# print("Shape of target: {}".format(iris_dataset['target'].shape))
-
-# 1-19
-# print("Target:\n{}".format(iris_dataset['target']))
-
-# 1-20
-X_train, X_test, y_train, y_test = train_test_split(
-    iris_dataset['data'], iris_dataset['target'], random_state=0)
-
-# 1-21
-# print("X_train shape: {}".format(X_train.shape))
-# print("y_train shape: {}".format(y_train.shape))
-
-# 1-22
-# print("X_test shape: {}".format(X_test.shape))
-# print("y_test shape: {}".format(y_test.shape))
-
-# 1-23
-iris_dataframe = pd.DataFrame(X_train, columns=iris_dataset.feature_names)
-grr = pd.plotting.scatter_matrix(iris_dataframe, c=y_train, figsize=(15, 15), marker='o',
-                        hist_kwds={'bins': 20}, s=60, alpha=.8, cmap=mglearn.cm3)
-
-# 1-24
-knn = KNeighborsClassifier(n_neighbors=1)
-
-# 1-25
-knn.fit(X_train, y_train)
-# print(knn)
-
-# 1-26
-X_new = np.array([[5, 2.9, 1, 0.2]])
-# print("X_new.shape: {}".format(X_new.shape))
-
-# 1-27
-prediction = knn.predict(X_new)
-# print("Prediction: {}".format(prediction))
-# print("Predicted target name: {}".format(
-#     iris_dataset['target_names'][prediction]))
-
-# 1-28
-y_pred = knn.predict(X_test)
-# print("Test set predictions:\n {}".format(y_pred))
-
-
-# 1-29
-# print("Test set score: {:.2f}".format(np.mean(y_pred == y_test)))
-
-# 1-30
-# print("Test set score: {:.2f}".format(knn.score(X_test, y_test)))
-
-# 1-31
-X_train, X_test, y_train, y_test = train_test_split(
-    iris_dataset['data'], iris_dataset['target'], random_state=0
-)
-knn= KNeighborsClassifier(n_neighbors=1)
-knn.fit(X_train, y_train)
-# print("Test set score: {:.2f}".format(knn.score(X_test, y_test)))
-
-# 2-1
-X, y = mglearn.datasets.make_forge()
-mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
-plt.legent(["Class 0", "Class 1"], loc=4)
-plt.legent("First feature")
-plt.legent("Second feature")
-print("X.shape: {}".format(X.shape))
-
-
+# print(train_total_elements_num)
