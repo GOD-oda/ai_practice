@@ -6,6 +6,10 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+numpy = "*"
+sklearn = "*"
+graphviz = "*"
+pydotplus = "*"
 
 [requires]
 python_version = "3.8"
