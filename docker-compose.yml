@@ -5,3 +5,8 @@ services:
     command: pipenv run app
     volumes:
       - ./:/var/www/html
+      - packages:/root/.local/share
+
+volumes:
+  packages:
+    driver: local
